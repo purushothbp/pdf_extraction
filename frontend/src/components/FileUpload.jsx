@@ -1,4 +1,5 @@
 import { useState } from 'react';
+require('dotenv').config();
 
 const FileUpload = ({ onUploadSuccess }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -8,7 +9,7 @@ const FileUpload = ({ onUploadSuccess }) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
-
+  const serverUrl = process.env.SERVER_URL
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     processFile(file);
@@ -23,7 +24,7 @@ const FileUpload = ({ onUploadSuccess }) => {
 
   const processFile = (file) => {
     if (!file) return;
-    
+
     if (file.type !== 'application/pdf') {
       setError('Please select a PDF file');
       setSelectedFile(null);
@@ -49,18 +50,18 @@ const FileUpload = ({ onUploadSuccess }) => {
 
     setUploading(true);
     setError('');
-    
+
     const formData = new FormData();
     formData.append('receipt', selectedFile);
 
     try {
-      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/upload', {
+      const response = await fetch(`${serverUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Upload failed');
       }
@@ -76,9 +77,9 @@ const FileUpload = ({ onUploadSuccess }) => {
 
   const validateFile = async (fileId) => {
     setValidating(true);
-    
+
     try {
-      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/validate', {
+      const response = await fetch(`${serverUrl}/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +88,7 @@ const FileUpload = ({ onUploadSuccess }) => {
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Validation failed');
       }
@@ -107,9 +108,9 @@ const FileUpload = ({ onUploadSuccess }) => {
 
   const processFileAI = async (fileId) => {
     setProcessing(true);
-    
+
     try {
-      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/process', {
+      const response = await fetch(`${serverUrl}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +119,7 @@ const FileUpload = ({ onUploadSuccess }) => {
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Processing failed');
       }
@@ -140,27 +141,27 @@ const FileUpload = ({ onUploadSuccess }) => {
 
     setMessage('Uploading receipt...');
     const fileId = await uploadFile();
-    
+
     if (!fileId) return;
 
     setMessage('Validating document...');
     const isValid = await validateFile(fileId);
-    
+
     if (!isValid) return;
 
     setMessage('Processing with AI...');
     const result = await processFileAI(fileId);
-    
+
     if (result) {
       setMessage('Receipt processed successfully!');
       setSelectedFile(null);
       if (onUploadSuccess) {
         onUploadSuccess(result);
       }
-      
+
       const fileInput = document.getElementById('file-input');
       if (fileInput) fileInput.value = '';
-      
+
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -187,13 +188,12 @@ const FileUpload = ({ onUploadSuccess }) => {
 
         {/* Drag & Drop Zone */}
         <div
-          className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center transition-all duration-300 ${
-            isDragOver
+          className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center transition-all duration-300 ${isDragOver
               ? 'border-blue-400 bg-blue-50/50'
               : selectedFile
-              ? 'border-green-400 bg-green-50/50'
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
+                ? 'border-green-400 bg-green-50/50'
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -206,7 +206,7 @@ const FileUpload = ({ onUploadSuccess }) => {
             disabled={isLoading}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
           />
-          
+
           {selectedFile ? (
             <div className="space-y-2 sm:space-y-3">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-xl mx-auto flex items-center justify-center">

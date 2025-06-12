@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
+require('dotenv').config();
 
 const ReceiptList = ({ refreshTrigger }) => {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const serverUrl = process.env.SERVER_URL
 
   const fetchReceipts = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await fetch('http://localhost:3001/receipts');
+      const response = await fetch(`${serverUrl}/receipts`);
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch receipts');
       }
-      
+
       setReceipts(result.receipts || []);
     } catch (err) {
       setError(err.message);
@@ -30,11 +32,11 @@ const ReceiptList = ({ refreshTrigger }) => {
     try {
       const response = await fetch(`http://localhost:3001/receipts/${id}`);
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch receipt details');
       }
-      
+
       setSelectedReceipt(result.receipt);
     } catch (err) {
       setError(err.message);
@@ -228,7 +230,7 @@ const ReceiptList = ({ refreshTrigger }) => {
                       {formatAmount(receipt.total_amount)}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Merchant:</span>
@@ -239,7 +241,7 @@ const ReceiptList = ({ refreshTrigger }) => {
                       <span className="font-medium text-gray-900">{formatDate(receipt.purchased_at)}</span>
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={() => fetchReceiptDetails(receipt.id)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-3 px-4 rounded-lg sm:rounded-xl font-medium transition-all duration-200 text-sm sm:text-base"
@@ -269,7 +271,7 @@ const ReceiptList = ({ refreshTrigger }) => {
                   </svg>
                 </button>
               </div>
-              
+
               <div className="space-y-4 sm:space-y-6">
                 <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="text-center">
@@ -290,7 +292,7 @@ const ReceiptList = ({ refreshTrigger }) => {
                     </label>
                     <p className="font-semibold text-gray-900 text-sm sm:text-base">{selectedReceipt.merchant_name || 'Unknown'}</p>
                   </div>
-                  
+
                   <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
                       Total Amount
