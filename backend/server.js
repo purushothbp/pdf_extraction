@@ -48,7 +48,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Receipt Processing API is running!' });
 });
 
-app.post('/upload', upload.single('receipt'), (req, res) => {
+app.post('/upload', upload.single('receipt'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
@@ -60,13 +60,8 @@ app.post('/upload', upload.single('receipt'), (req, res) => {
     const fileName = req.file.originalname;
     const filePath = req.file.path;
 
-    db.checkDuplicateFile(fileName, (err, existingFile) => {
-      if (err) {
-        return res.status(500).json({ 
-          error: 'Database error',
-          success: false 
-        });
-      }
+    try {
+      const existingFile = await db.checkDuplicateFile(fileName);
 
       if (existingFile) {
         fs.unlinkSync(filePath);
@@ -77,27 +72,24 @@ app.post('/upload', upload.single('receipt'), (req, res) => {
         });
       }
 
-      db.insertReceiptFile(fileName, filePath, (err, fileId) => {
-        if (err) {
-          fs.unlinkSync(filePath);
-          return res.status(500).json({ 
-            error: 'Failed to save file metadata',
-            success: false 
-          });
-        }
+      const fileId = await db.insertReceiptFile(fileName, filePath);
 
-        res.status(201).json({
-          success: true,
-          message: 'File uploaded successfully',
-          fileId: fileId,
-          fileName: fileName,
-          filePath: filePath
-        });
+      res.status(201).json({
+        success: true,
+        message: 'File uploaded successfully',
+        fileId: fileId,
+        fileName: fileName,
+        filePath: filePath
       });
-    });
+    } catch (dbError) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      throw dbError;
+    }
 
   } catch (error) {
-    if (req.file && req.file.path) {
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
@@ -111,7 +103,7 @@ app.post('/upload', upload.single('receipt'), (req, res) => {
   }
 });
 
-app.post('/validate', (req, res) => {
+app.post('/validate', async (req, res) => {
   try {
     const { fileId } = req.body;
 
@@ -122,80 +114,62 @@ app.post('/validate', (req, res) => {
       });
     }
 
-    db.getReceiptFileById(fileId, (err, fileRecord) => {
-      if (err) {
-        return res.status(500).json({
-          error: 'Database error',
-          success: false
-        });
-      }
+    const fileRecord = await db.getReceiptFileById(fileId);
 
-      if (!fileRecord) {
-        return res.status(404).json({
-          error: 'File not found',
-          success: false
-        });
-      }
+    if (!fileRecord) {
+      return res.status(404).json({
+        error: 'File not found',
+        success: false
+      });
+    }
 
-      if (!fs.existsSync(fileRecord.file_path)) {
-        db.updateReceiptFileValidation(fileId, false, 'File not found on disk', (err) => {
-          if (err) console.error('Database update error:', err);
-        });
-        return res.status(404).json({
-          error: 'File not found on disk',
-          success: false
-        });
-      }
+    if (!fs.existsSync(fileRecord.file_path)) {
+      await db.updateReceiptFileValidation(fileId, false, 'File not found on disk');
+      return res.status(404).json({
+        error: 'File not found on disk',
+        success: false
+      });
+    }
 
-      const fileBuffer = fs.readFileSync(fileRecord.file_path);
-      
-      pdfParse(fileBuffer).then(data => {
-        if (data.text && data.text.trim().length > 0) {
-          db.updateReceiptFileValidation(fileId, true, null, (err) => {
-            if (err) {
-              return res.status(500).json({
-                error: 'Failed to update validation status',
-                success: false
-              });
-            }
+    const fileBuffer = fs.readFileSync(fileRecord.file_path);
 
-            res.json({
-              success: true,
-              message: 'File is valid PDF',
-              fileId: fileId,
-              isValid: true,
-              textLength: data.text.length
-            });
-          });
-        } else {
-          db.updateReceiptFileValidation(fileId, false, 'PDF contains no readable text', (err) => {
-            if (err) console.error('Database update error:', err);
-          });
-          
-          res.status(400).json({
-            success: false,
-            message: 'PDF contains no readable text',
-            fileId: fileId,
-            isValid: false,
-            invalidReason: 'PDF contains no readable text'
-          });
-        }
-      }).catch(error => {
-        const invalidReason = 'Invalid PDF format or corrupted file';
-        db.updateReceiptFileValidation(fileId, false, invalidReason, (err) => {
-          if (err) console.error('Database update error:', err);
+    try {
+      const data = await pdfParse(fileBuffer);
+
+      if (data.text && data.text.trim().length > 0) {
+        await db.updateReceiptFileValidation(fileId, true, null);
+
+        res.json({
+          success: true,
+          message: 'File is valid PDF',
+          fileId: fileId,
+          isValid: true,
+          textLength: data.text.length
         });
+      } else {
+        await db.updateReceiptFileValidation(fileId, false, 'PDF contains no readable text');
 
         res.status(400).json({
           success: false,
-          message: invalidReason,
+          message: 'PDF contains no readable text',
           fileId: fileId,
           isValid: false,
-          invalidReason: invalidReason,
-          error: error.message
+          invalidReason: 'PDF contains no readable text'
         });
+      }
+    } catch (pdfError) {
+      const invalidReason = 'Invalid PDF format or corrupted file';
+      await db.updateReceiptFileValidation(fileId, false, invalidReason);
+
+      res.status(400).json({
+        success: false,
+        message: invalidReason,
+        fileId: fileId,
+        isValid: false,
+        invalidReason: invalidReason,
+        error: pdfError.message
       });
-    });
+    }
 
   } catch (error) {
     res.status(500).json({
@@ -216,121 +190,102 @@ app.post('/process', async (req, res) => {
       });
     }
 
-    db.getReceiptFileById(fileId, async (err, fileRecord) => {
-      if (err) {
+    const fileRecord = await db.getReceiptFileById(fileId);
+
+    if (!fileRecord) {
+      return res.status(404).json({
+        error: 'File not found',
+        success: false
+      });
+    }
+
+    if (!fileRecord.is_valid) {
+      return res.status(400).json({
+        error: 'File is not valid. Please validate first.',
+        success: false
+      });
+    }
+
+    if (fileRecord.is_processed) {
+      return res.status(409).json({
+        error: 'File has already been processed',
+        success: false
+      });
+    }
+
+    try {
+      const fileBuffer = fs.readFileSync(fileRecord.file_path);
+      const pdfData = await pdfParse(fileBuffer);
+      const receiptText = pdfData.text;
+
+      if (!process.env.GEMINI_API_KEY) {
         return res.status(500).json({
-          error: 'Database error',
+          error: 'Gemini API key not configured',
           success: false
         });
       }
 
-      if (!fileRecord) {
-        return res.status(404).json({
-          error: 'File not found',
-          success: false
-        });
-      }
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      if (!fileRecord.is_valid) {
-        return res.status(400).json({
-          error: 'File is not valid. Please validate first.',
-          success: false
-        });
-      }
+      const prompt = `
+        Extract the following information from this receipt text. Return the data in JSON format with these exact field names:
+        - purchased_at: Date and time of purchase (in ISO format if possible, or the original format from receipt)
+        - merchant_name: Name of the merchant/store
+        - total_amount: Total amount as a number (without currency symbols)
 
-      if (fileRecord.is_processed) {
-        return res.status(409).json({
-          error: 'File has already been processed',
-          success: false
-        });
-      }
+        If any information is not found, use null for that field.
+        Only return the JSON object, no additional text.
 
+        Receipt text:
+        ${receiptText}
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const extractedText = response.text();
+
+      let extractedData;
       try {
-        const fileBuffer = fs.readFileSync(fileRecord.file_path);
-        const pdfData = await pdfParse(fileBuffer);
-        const receiptText = pdfData.text;
-
-        if (!process.env.GEMINI_API_KEY) {
-          return res.status(500).json({
-            error: 'Gemini API key not configured',
-            success: false
-          });
+        const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          extractedData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
         }
-
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        
-        const prompt = `
-          Extract the following information from this receipt text. Return the data in JSON format with these exact field names:
-          - purchased_at: Date and time of purchase (in ISO format if possible, or the original format from receipt)
-          - merchant_name: Name of the merchant/store
-          - total_amount: Total amount as a number (without currency symbols)
-          
-          If any information is not found, use null for that field.
-          Only return the JSON object, no additional text.
-          
-          Receipt text:
-          ${receiptText}
-        `;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const extractedText = response.text();
-
-        let extractedData;
-        try {
-          const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            extractedData = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error('No JSON found in response');
-          }
-        } catch (parseError) {
-          console.error('Failed to parse AI response:', extractedText);
-          return res.status(500).json({
-            error: 'Failed to parse extracted data',
-            success: false,
-            aiResponse: extractedText
-          });
-        }
-
-        const purchasedAt = extractedData.purchased_at || null;
-        const merchantName = extractedData.merchant_name || 'Unknown';
-        const totalAmount = parseFloat(extractedData.total_amount) || 0;
-
-        db.insertReceipt(fileId, purchasedAt, merchantName, totalAmount, fileRecord.file_path, (err, receiptId) => {
-          if (err) {
-            return res.status(500).json({
-              error: 'Failed to save extracted data',
-              success: false
-            });
-          }
-
-          db.updateReceiptFileProcessed(fileId, (err) => {
-            if (err) {
-              console.error('Failed to update processed status:', err);
-            }
-
-            res.json({
-              success: true,
-              message: 'Receipt processed successfully',
-              receiptId: receiptId,
-              extractedData: {
-                purchased_at: purchasedAt,
-                merchant_name: merchantName,
-                total_amount: totalAmount
-              }
-            });
-          });
-        });
-
-      } catch (aiError) {
-        console.error('Gemini AI error:', aiError);
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', extractedText);
         return res.status(500).json({
-          error: 'Failed to process receipt with AI: ' + aiError.message,
-          success: false
+          error: 'Failed to parse extracted data',
+          success: false,
+          aiResponse: extractedText
         });
       }
-    });
+
+      const purchasedAt = extractedData.purchased_at || null;
+      const merchantName = extractedData.merchant_name || 'Unknown';
+      const totalAmount = parseFloat(extractedData.total_amount) || 0;
+
+      const receiptId = await db.insertReceipt(fileId, purchasedAt, merchantName, totalAmount, fileRecord.file_path);
+      await db.updateReceiptFileProcessed(fileId);
+
+      res.json({
+        success: true,
+        message: 'Receipt processed successfully',
+        receiptId: receiptId,
+        extractedData: {
+          purchased_at: purchasedAt,
+          merchant_name: merchantName,
+          total_amount: totalAmount
+        }
+      });
+
+    } catch (aiError) {
+      console.error('Gemini AI error:', aiError);
+      return res.status(500).json({
+        error: 'Failed to process receipt with AI: ' + aiError.message,
+        success: false
+      });
+    }
 
   } catch (error) {
     res.status(500).json({
@@ -340,21 +295,14 @@ app.post('/process', async (req, res) => {
   }
 });
 
-app.get('/receipts', (req, res) => {
+app.get('/receipts', async (req, res) => {
   try {
-    db.getAllReceipts((err, receipts) => {
-      if (err) {
-        return res.status(500).json({
-          error: 'Database error',
-          success: false
-        });
-      }
+    const receipts = await db.getAllReceipts();
 
-      res.json({
-        success: true,
-        count: receipts.length,
-        receipts: receipts
-      });
+    res.json({
+      success: true,
+      count: receipts.length,
+      receipts: receipts
     });
   } catch (error) {
     res.status(500).json({
@@ -364,7 +312,7 @@ app.get('/receipts', (req, res) => {
   }
 });
 
-app.get('/receipts/:id', (req, res) => {
+app.get('/receipts/:id', async (req, res) => {
   try {
     const receiptId = parseInt(req.params.id);
 
@@ -375,25 +323,18 @@ app.get('/receipts/:id', (req, res) => {
       });
     }
 
-    db.getReceiptById(receiptId, (err, receipt) => {
-      if (err) {
-        return res.status(500).json({
-          error: 'Database error',
-          success: false
-        });
-      }
+    const receipt = await db.getReceiptById(receiptId);
 
-      if (!receipt) {
-        return res.status(404).json({
-          error: 'Receipt not found',
-          success: false
-        });
-      }
-
-      res.json({
-        success: true,
-        receipt: receipt
+    if (!receipt) {
+      return res.status(404).json({
+        error: 'Receipt not found',
+        success: false
       });
+    }
+
+    res.json({
+      success: true,
+      receipt: receipt
     });
   } catch (error) {
     res.status(500).json({
