@@ -29,13 +29,9 @@ const ReceiptList = ({ refreshTrigger }) => {
 
   const fetchReceiptDetails = async (id) => {
     try {
-      const response = await fetch(`http://localhost:3001/receipts/${id}`);
+      const response = await fetch(`${serverUrl}/receipts/${id}`);
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch receipt details');
-      }
-
+      if (!response.ok) throw new Error(result.error || 'Failed to load details');
       setSelectedReceipt(result.receipt);
     } catch (err) {
       setError(err.message);
