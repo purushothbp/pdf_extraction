@@ -1,0 +1,147 @@
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+.env.example.local
+backend/.env
+frontend/.env
+
+# Database
+database/
+*.db
+*.sqlite
+*.sqlite3
+receipts.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Uploads & User Generated Content
+uploads/
+upload/
+files/
+temp/
+tmp/
+*.pdf
+*.doc
+*.docx
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.vercel/
+.output/
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.temp
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Serverless
+.serverless/
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+.docker/
+
+# Testing
+.jest/
+jest.config.js
+coverage/
+
+# Miscellaneous
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+.cache/
+.temp/
+.tmp/
+
+# API Keys and Secrets (additional safety)
+**/config/keys.js
+**/config/prod.js
+**/*secret*
+**/*key*
+**/*token*
+**/credentials.*
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Local development
+.local/
+local/
+
+# Error logs
+error.log
+access.log
+
+# Memory dumps
+*.heapsnapshot
+*.cpuprofile
