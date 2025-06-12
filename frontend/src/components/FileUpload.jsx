@@ -54,7 +54,7 @@ const FileUpload = ({ onUploadSuccess }) => {
     formData.append('receipt', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:3001/upload', {
+      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/upload', {
         method: 'POST',
         body: formData,
       });
@@ -78,7 +78,7 @@ const FileUpload = ({ onUploadSuccess }) => {
     setValidating(true);
     
     try {
-      const response = await fetch('http://localhost:3001/validate', {
+      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ const FileUpload = ({ onUploadSuccess }) => {
     setProcessing(true);
     
     try {
-      const response = await fetch('http://localhost:3001/process', {
+      const response = await fetch('https://pdf-extraction-k1hw.onrender.com/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
