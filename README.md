@@ -1,121 +1,318 @@
-# **Automate Accounts Developer Hiring Assessment**
+# Receipt Processing System
 
-This assessment is designed to evaluate your ability to build a system for processing scanned receipts automatically. The goal is to extract relevant details from PDF receipts using OCR/AI techniques and store the extracted data in a structured format.
+A full-stack web application that automates the extraction of information from scanned PDF receipts using AI-powered OCR technology. The system uploads, validates, processes, and stores receipt data with a modern React frontend and Node.js backend.
 
-## **Project Overview**
+## Features
 
-You will be working with a repository containing a collection of scanned receipts in **PDF format**, categorized into directories based on the year of purchase. The challenge is to **automate** the extraction of information from these scanned receipts and store it efficiently in a **SQLite database**.
+- **PDF Receipt Upload**: Upload PDF receipt files with validation
+- **Automatic Validation**: Validates PDF files and ensures readable text content
+- **AI-Powered Extraction**: Uses Google Gemini AI to extract merchant name, purchase date, and total amount
+- **Data Management**: Stores extracted data in SQLite database with full CRUD operations
+- **Modern UI**: Clean, responsive React interface with Tailwind CSS
+- **Real-time Processing**: Live updates and status tracking during upload and processing
 
-Deadline for submission is **3 days** from when you receive the email.
+## Tech Stack
 
-## **Problem Statement**
+### Frontend
+- **React 18** with Vite for fast development
+- **Tailwind CSS** for responsive styling
+- **JavaScript ES6+** for modern functionality
 
-Develop a solution as a **web application** with **REST APIs** that can:
-1. **Upload scanned receipts** in PDF format. The files can be stored in a local directory.
-2. **Validate** the uploaded files to ensure they are valid PDFs.
-3. **Extract key details** from the receipts using **OCR/AI-based text extraction** techniques.
-4. **Store extracted information** in a structured database schema.
-5. **Provide APIs** for managing and retrieving receipts and their extracted data.
+### Backend
+- **Node.js** with Express.js framework
+- **SQLite3** database for data persistence
+- **Google Generative AI (Gemini)** for text extraction
+- **PDF-Parse** for PDF text extraction
+- **Multer** for file upload handling
 
-You may use **any programming language, framework, or OCR/AI library** to implement the solution.
+## Project Structure
 
----
+```
+puru/
+├── frontend/                 # React frontend application
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── FileUpload.jsx    # File upload component
+│   │   │   └── ReceiptList.jsx   # Receipt management component
+│   │   ├── App.jsx               # Main application component
+│   │   └── index.css             # Tailwind CSS imports
+│   ├── package.json
+│   └── tailwind.config.js
+├── backend/                  # Node.js backend API
+│   ├── server.js            # Main server file with API endpoints
+│   ├── database.js          # SQLite database setup and queries
+│   ├── package.json
+│   └── .env.example         # Environment variables template
+├── uploads/                 # Directory for uploaded PDF files
+├── database/               # Directory for SQLite database file
+└── README.md              # This file
+```
 
-## **Database Schema**
+## Database Schema
 
-The extracted information should be stored in an **SQLite database (`receipts.db`)**.
+### receipt_file Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier for uploaded file |
+| file_name | TEXT | Original filename |
+| file_path | TEXT | Storage path of uploaded file |
+| is_valid | BOOLEAN | Whether file is a valid PDF |
+| invalid_reason | TEXT | Reason for invalid file (if applicable) |
+| is_processed | BOOLEAN | Whether file has been processed |
+| created_at | DATETIME | Upload timestamp |
+| updated_at | DATETIME | Last modification timestamp |
 
-### **1. Receipt File Table (`receipt_file`)**
-Stores metadata of uploaded receipt files.
+### receipt Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier for extracted receipt |
+| file_id | INTEGER | Foreign key to receipt_file table |
+| purchased_at | DATETIME | Date of purchase (extracted) |
+| merchant_name | TEXT | Merchant name (extracted) |
+| total_amount | REAL | Total amount (extracted) |
+| file_path | TEXT | Path to original PDF file |
+| created_at | DATETIME | Processing timestamp |
+| updated_at | DATETIME | Last modification timestamp |
 
-| Column Name     | Description                                                    |
-|-----------------|----------------------------------------------------------------|
-| `id`            | Unique identifier for each uploaded file                        |
-| `file_name`     | Name of the uploaded file                                       |
-| `file_path`     | Storage path of the uploaded file                               |
-| `is_valid`      | Indicates if the file is a valid PDF                            |
-| `invalid_reason`| Reason for file being invalid (if applicable)                   |
-| `is_processed`  | Indicates if the file has been processed                        |
-| `created_at`    | Creation time (when receipt was first uploaded)                 |
-| `updated_at`    | Last update time (latest modification in case of re-upload)     |
+## Installation & Setup
 
-### **2. Receipt Table (`receipt`)**
-Stores extracted information from valid receipt files.
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn package manager
+- Google Gemini API key
 
-You can modify the schema as needed to store additional information extracted from the receipts like transaction details, purchased items details, payment details and other information.
+### 1. Clone and Navigate
+```bash
+cd /path/to/puru
+```
 
-| Column Name     | Description                                     |
-|----------------|-------------------------------------------------|
-| `id`           | Unique identifier for each extracted receipt     |
-| `purchased_at` | Date and time of purchase (extracted from receipt)|
-| `merchant_name`| Merchant name (extracted from receipt)           |
-| `total_amount` | Total amount spent (extracted from receipt)      |
-| `file_path`    | Path to the associated scanned receipt          |
-| `created_at`   | Creation time (when receipt was processed)       |
-| `updated_at`   | Last update time (latest modification)          |
----
+### 2. Backend Setup
+```bash
+cd backend
 
-## **API Specifications**
+# Install dependencies
+npm install
 
-The solution should expose a set of **REST APIs** for receipt management. You may use any web framework and implement the APIs with or without an ORM.
+# Copy environment template
+cp .env.example .env
 
-### **1. `/upload` (POST)**
-- Uploads a receipt file (PDF format only).
-- Stores metadata in the `receipt_file` table.
+# Edit .env file and add your Gemini API key
+# GEMINI_API_KEY=your_actual_gemini_api_key_here
+```
 
-### **2. `/validate` (POST)**
-- Validates whether the uploaded file is a valid PDF.
-- Updates `is_valid` and `invalid_reason` fields in the `receipt_file` table.
+### 3. Frontend Setup
+```bash
+cd ../frontend
 
-### **3. `/process` (POST)**
-- Extracts receipt details using OCR/AI.
-- Stores extracted information in the `receipt` table.
-- Marks `is_processed` as `True` in the `receipt_file` table.
+# Install dependencies
+npm install
+```
 
-### **4. `/receipts` (GET)**
-- Lists all receipts stored in the database.
+### 4. Start the Application
 
-### **5. `/receipts/{id}` (GET)**
-- Retrieves details of a specific receipt by its ID.
+**Terminal 1 - Backend:**
+```bash
+cd backend
+npm start
+```
+Server will start on http://localhost:3001
 
----
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+Frontend will start on http://localhost:5173
 
-## **Evaluation Criteria**
+## API Endpoints
 
-Your submission will be evaluated based on the following factors:
+### POST /upload
+Upload a PDF receipt file.
 
-1. **Accuracy of extracted information** – How well the OCR/AI system extracts key details.
-2. **Code quality & readability** – Clean, maintainable, and well-documented code.
-3. **Database schema design** – Efficient and scalable schema structure.
-4. **API design & functionality** – Proper implementation of API endpoints.
-5. **Error handling & validation** – Robust handling of invalid files and extraction errors.
-6. **Documentation** – Clear instructions on setup, usage, and functionality.
-7. **Git commit history** – Meaningful commits showing structured development progress.
+**Request:**
+- Method: POST
+- Content-Type: multipart/form-data
+- Body: `receipt` (file field)
 
----
+**Response:**
+```json
+{
+  "success": true,
+  "message": "File uploaded successfully",
+  "fileId": 1,
+  "fileName": "receipt.pdf",
+  "filePath": "/path/to/receipt.pdf"
+}
+```
 
-## **Submission Guidelines**
+### POST /validate
+Validate an uploaded PDF file.
 
-Your final submission should be a **ZIP file** containing:
+**Request:**
+```json
+{
+  "fileId": 1
+}
+```
 
-1. **Source Code** – The complete implementation of your solution.
-2. **Database File (`receipts.db`)** – The SQLite database with sample entries.
-3. **Documentation** – A README file explaining:
-   - How to set up and run the project
-   - API usage with example requests/responses
-   - Any dependencies required
-4. **Execution Instructions** – Any specific setup steps needed to test your implementation.
+**Response:**
+```json
+{
+  "success": true,
+  "message": "File is valid PDF",
+  "fileId": 1,
+  "isValid": true,
+  "textLength": 1250
+}
+```
 
----
+### POST /process
+Process a validated PDF and extract receipt data using AI.
 
-## **Additional Notes**
+**Request:**
+```json
+{
+  "fileId": 1
+}
+```
 
-1. **Flexibility** – You are free to enhance or modify the problem statement as needed. If you think of a better approach, feel free to implement it.
-2. **Technology Choice** – Use any programming language, framework, and libraries of your choice.
-3. **Duplicate Handling** – If the same receipt is uploaded multiple times, **update** the existing record instead of creating duplicates.
-4. **Partial Submissions** – If your solution is incomplete or has bugs, **submit anyway**. We value your approach and thought process more than a perfect implementation.
-5. **Support** – If you have any questions, feel free to reach out.
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Receipt processed successfully",
+  "receiptId": 1,
+  "extractedData": {
+    "purchased_at": "2024-01-15T10:30:00",
+    "merchant_name": "Best Buy",
+    "total_amount": 299.99
+  }
+}
+```
 
----
+### GET /receipts
+Retrieve all processed receipts.
 
-## **Happy Coding!**
+**Response:**
+```json
+{
+  "success": true,
+  "count": 5,
+  "receipts": [
+    {
+      "id": 1,
+      "file_id": 1,
+      "purchased_at": "2024-01-15T10:30:00",
+      "merchant_name": "Best Buy",
+      "total_amount": 299.99,
+      "file_name": "receipt.pdf",
+      "created_at": "2024-01-15T15:45:00"
+    }
+  ]
+}
+```
+
+### GET /receipts/:id
+Retrieve a specific receipt by ID.
+
+**Response:**
+```json
+{
+  "success": true,
+  "receipt": {
+    "id": 1,
+    "file_id": 1,
+    "purchased_at": "2024-01-15T10:30:00",
+    "merchant_name": "Best Buy",
+    "total_amount": 299.99,
+    "file_name": "receipt.pdf",
+    "created_at": "2024-01-15T15:45:00"
+  }
+}
+```
+
+## Usage Instructions
+
+1. **Start both backend and frontend servers** as described in the setup section
+
+2. **Open your browser** and navigate to http://localhost:5173
+
+3. **Upload a PDF receipt:**
+   - Click "Choose File" and select a PDF receipt
+   - Click "Upload & Process" button
+   - Watch the progress through validation and AI processing
+
+4. **View processed receipts:**
+   - Scroll down to see the receipts table
+   - Click "View Details" to see full receipt information
+   - Table updates automatically after new uploads
+
+## Environment Variables
+
+Create a `.env` file in the backend directory:
+
+```env
+PORT=3001
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+## Error Handling
+
+The application includes comprehensive error handling for:
+- Invalid file types (non-PDF files)
+- Corrupted or unreadable PDF files
+- Missing or invalid API keys
+- Database connection errors
+- AI processing failures
+- Network connectivity issues
+
+## Development Notes
+
+- The frontend runs on port 5173 (Vite default)
+- The backend runs on port 3001
+- SQLite database file is created automatically in `database/receipts.db`
+- Uploaded files are stored in the `uploads/` directory
+- All API endpoints include proper CORS headers for development
+
+## Production Considerations
+
+Before deploying to production:
+
+1. **Environment Variables**: Secure your Gemini API key
+2. **File Storage**: Consider cloud storage for uploaded files
+3. **Database**: Consider PostgreSQL or MySQL for production
+4. **Security**: Add authentication and authorization
+5. **Monitoring**: Add logging and error tracking
+6. **Performance**: Add caching and rate limiting
+
+## Troubleshooting
+
+**Common Issues:**
+
+1. **"Gemini API key not configured"**
+   - Ensure you've added GEMINI_API_KEY to your .env file
+   - Restart the backend server after adding the key
+
+2. **"Failed to connect to backend"**
+   - Verify backend server is running on port 3001
+   - Check for any error messages in the backend console
+
+3. **"PDF contains no readable text"**
+   - Try a different PDF file
+   - Ensure the PDF contains actual text (not just images)
+
+4. **Database errors**
+   - Check file permissions in the `database/` directory
+   - Restart the backend to reinitialize the database
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is created for educational and assessment purposes.
