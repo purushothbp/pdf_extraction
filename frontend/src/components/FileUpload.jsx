@@ -1,5 +1,4 @@
 import { useState } from 'react';
-require('dotenv').config();
 
 const FileUpload = ({ onUploadSuccess }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,7 +8,7 @@ const FileUpload = ({ onUploadSuccess }) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
-  const serverUrl = process.env.SERVER_URL
+  const serverUrl = import.meta.env.VITE_SERVER_URL;
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     processFile(file);

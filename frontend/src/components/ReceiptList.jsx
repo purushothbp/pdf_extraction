@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-require('dotenv').config();
 
 const ReceiptList = ({ refreshTrigger }) => {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const serverUrl = process.env.SERVER_URL
+  const serverUrl = import.meta.env.VITE_SERVER_URL;
 
   const fetchReceipts = async () => {
     setLoading(true);
